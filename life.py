@@ -46,7 +46,7 @@ ALL_BUTTONS = [
 
 def init_grid():
     """Creates an empty 80x120 grid."""
-    return np.zeros((GRID_HEIGHT, GRID_WIDTH), dtype=np.int8)
+    return np.zeros((GRID_HEIGHT, GRID_WIDTH), dtype=bool)
 
 @jit(nopython=True, parallel=True,fastmath=True)
 def _count_neighbors(grid, r, c, height, width):
