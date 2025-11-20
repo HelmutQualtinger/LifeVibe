@@ -2,16 +2,18 @@ import pygame
 import sys
 import numpy as np
 from numba import jit
+from patterns import PATTERNS
 
 # --- Configuration ---
 GRID_WIDTH = 120      # 120 columns
 GRID_HEIGHT = 80      # 80 rows
 CELL_SIZE = 8         # Pixel size of each cell
 MARGIN = 1            # Gap between cells
+
 BUTTON_PANEL_HEIGHT = 50 # Height for the button panel
 WIDTH = GRID_WIDTH * (CELL_SIZE + MARGIN) + MARGIN
 HEIGHT = GRID_HEIGHT * (CELL_SIZE + MARGIN) + MARGIN + BUTTON_PANEL_HEIGHT
-FPS = 60              # Speed of the game
+FPS = 120              # Speed of the game
 
 # --- Colors (R, G, B) ---
 BLACK = (20, 20, 20)
@@ -41,12 +43,28 @@ ALL_BUTTONS = [
     {"text": "Stop", "action": "stop"},
     {"text": "Step", "action": "step"},
     {"text": "Clear", "action": "clear"},
+    {"text": "Patterns", "action": "patterns"},
     {"text": "Quit", "action": "quit"},
 ]
 
 def init_grid():
     """Creates an empty 80x120 grid."""
     return np.zeros((GRID_HEIGHT, GRID_WIDTH), dtype=bool)
+
+
+def load_pattern(grid, pattern_name, offset=(0, 0)):
+    """Loads a pattern from the PATTERNS dictionary onto the grid."""
+    pattern_string = PATTERNS.get(pattern_name)
+    if not pattern_string:
+        return
+
+    pattern_lines = pattern_string.strip().split('\n')
+    for r, line in enumerate(pattern_lines):
+        for c, char in enumerate(line.strip()):
+            if char == 'O':
+                row, col = r + offset[0], c + offset[1]
+                if 0 <= row < grid.shape[0] and 0 <= col < grid.shape[1]:
+                    grid[row, col] = 1
 
 @jit(nopython=True, parallel=True,fastmath=True)
 def _count_neighbors(grid, r, c, height, width):
@@ -134,6 +152,24 @@ def get_cell_color(neighbors):
     else:
         return COLOR_CROWDED
 
+
+def draw_pattern_menu(screen, font):
+    """Draws the pattern selection menu."""
+    menu_rect = pygame.Rect(WIDTH // 4, HEIGHT // 4, WIDTH // 2, HEIGHT // 2)
+    pygame.draw.rect(screen, (100, 100, 100), menu_rect)
+    pygame.draw.rect(screen, (255, 255, 255), menu_rect, 2) # border
+
+    y_offset = menu_rect.top + 20
+    pattern_rects = {}
+    for pattern_name in sorted(PATTERNS.keys()):
+        text_surface = font.render(pattern_name, True, (255, 255, 255))
+        text_rect = text_surface.get_rect(centerx=menu_rect.centerx, top=y_offset)
+        screen.blit(text_surface, text_rect)
+        pattern_rects[pattern_name] = text_rect
+        y_offset += 30
+    return pattern_rects
+
+
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -148,6 +184,8 @@ def main():
     generation = 0
     active_cells = 0
     button_rects = {}
+    show_pattern_menu = False
+    pattern_rects = {}
 
     while running:
         # --- Event Handling ---
@@ -155,11 +193,23 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
 
-            # Mouse Controls
-            if pygame.mouse.get_pressed()[0]: # Left Click
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 pos = pygame.mouse.get_pos()
-                # Check if click is on grid or button panel
-                if pos[1] < HEIGHT - BUTTON_PANEL_HEIGHT: # Click on grid
+                if show_pattern_menu:
+                    for pattern_name, rect in pattern_rects.items():
+                        if rect.collidepoint(pos):
+                            grid = init_grid()
+                            pattern_lines = PATTERNS[pattern_name].strip().split('\n')
+                            pattern_height = len(pattern_lines)
+                            pattern_width = max(len(line.strip()) for line in pattern_lines)
+                            offset_r = (GRID_HEIGHT - pattern_height) // 2
+                            offset_c = (GRID_WIDTH - pattern_width) // 2
+                            load_pattern(grid, pattern_name, offset=(offset_r, offset_c))
+                            show_pattern_menu = False
+                            paused = True
+                            generation = 0
+                            break
+                elif pos[1] < HEIGHT - BUTTON_PANEL_HEIGHT: # Click on grid
                     # Calculate grid index from pixel position
                     c = pos[0] // (CELL_SIZE + MARGIN)
                     r = pos[1] // (CELL_SIZE + MARGIN)
@@ -178,10 +228,15 @@ def main():
                             elif action == "clear":
                                 grid = init_grid()
                                 generation = 0
+                            elif action == "patterns":
+                                show_pattern_menu = not show_pattern_menu
                             elif action == "quit":
                                 running = False
 
-            if pygame.mouse.get_pressed()[2]: # Right Click
+            if pygame.mouse.get_pressed()[0]: # Left Click
+                pass # Already handled above
+
+            if not show_pattern_menu and pygame.mouse.get_pressed()[2]: # Right Click
                 pos = pygame.mouse.get_pos()
                 c = pos[0] // (CELL_SIZE + MARGIN)
                 r = pos[1] // (CELL_SIZE + MARGIN)
@@ -216,8 +271,11 @@ def main():
                 else:
                     pygame.draw.rect(screen, GRID_DARK_BLUE, (x, y, CELL_SIZE, CELL_SIZE))
 
-        # Draw buttons
-        draw_buttons(screen, font, paused, button_rects)
+        if show_pattern_menu:
+            pattern_rects = draw_pattern_menu(screen, font)
+        else:
+            # Draw buttons
+            draw_buttons(screen, font, paused, button_rects)
 
         # Draw generation and active cells counter
         gen_text = font.render(f"Gen: {generation}  Cells: {int(active_cells)}", True, WHITE)
