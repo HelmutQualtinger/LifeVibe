@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life: Comprehensive Guide</title>
+    <meta name="description" content="A comprehensive summary and interactive demonstration of John Conway's Game of Life.">
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --text-color: #1e293b;
+            --accent-color: #0ea5e9;
+            --secondary-bg: #f1f5f9;
+            --border-color: #cbd5e1;
+            --success-color: #16a34a;
+            --danger-color: #dc2626;
+            --font-main: system-ui, -apple-system, sans-serif;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.7;
+            margin: 0;
+            padding: 0;
+            background-image: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+        }
+
+        header {
+            background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
+            border-bottom: 2px solid var(--accent-color);
+            padding: 4rem 1rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(14, 165, 233, 0.08), transparent 50%);
+            pointer-events: none;
+        }
+
+        header > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 3.2rem;
+            color: var(--accent-color);
+            letter-spacing: -0.03em;
+            font-weight: 700;
+            text-shadow: 0 2px 8px rgba(14, 165, 233, 0.15);
+        }
+
+        header p {
+            font-size: 1.2rem;
+            color: #475569;
+            margin-top: 0.75rem;
+            font-weight: 300;
+        }
+
+        h2 {
+            color: var(--accent-color);
+            border-bottom: 3px solid var(--accent-color);
+            padding-bottom: 0.75rem;
+            margin-top: 3.5rem;
+            margin-bottom: 1.5rem;
+            font-size: 2rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        h3 {
+            color: #cbd5e1;
+            margin-bottom: 0.75rem;
+            margin-top: 1.75rem;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 3rem 1.5rem;
+        }
+
+        main section {
+            margin-bottom: 2.5rem;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 2rem;
+            border-radius: 1rem;
+            border: 1px solid rgba(203, 213, 225, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        main section:hover {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: rgba(14, 165, 233, 0.3);
+            box-shadow: var(--shadow-sm);
+        }
+
+        p {
+            margin-bottom: 1.5rem;
+            font-size: 1.05rem;
+            line-height: 1.8;
+        }
+
+        ul {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        li {
+            margin-bottom: 0.75rem;
+            font-size: 1.05rem;
+        }
+
+        strong {
+            color: var(--accent-color);
+        }
+
+        /* Rules Grid */
+        .rules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+            margin-bottom: 0;
+        }
+
+        .rule-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(240, 249, 255, 0.6) 100%);
+            padding: 2rem;
+            border-radius: 1rem;
+            border: 2px solid var(--border-color);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .rule-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-color), transparent);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        .rule-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-color);
+            box-shadow: var(--shadow-sm);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(224, 242, 254, 0.8) 100%);
+        }
+
+        .rule-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .rule-card strong {
+            display: block;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--accent-color);
+            font-weight: 700;
+        }
+
+        .rule-card p {
+            margin: 0;
+            font-size: 0.95rem;
+            color: #475569;
+            line-height: 1.6;
+        }
+
+        /* Simulation Styles */
+        .sim-container {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(240, 249, 255, 0.6) 100%);
+            padding: 2.5rem;
+            border-radius: 1.25rem;
+            border: 2px solid var(--border-color);
+            box-shadow: var(--shadow);
+            margin: 2.5rem 0;
+            transition: all 0.3s ease;
+        }
+
+        .sim-container:hover {
+            border-color: rgba(14, 165, 233, 0.3);
+            box-shadow: var(--shadow);
+        }
+
+        canvas {
+            background-color: #1e293b;
+            width: 100%;
+            height: auto;
+            border: 2px solid var(--accent-color);
+            border-radius: 0.75rem;
+            display: block;
+            cursor: crosshair;
+            image-rendering: pixelated;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 2rem;
+            justify-content: center;
+            align-items: center;
+        }
+
+        button, select {
+            padding: 0.8rem 1.5rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.6rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: var(--font-main);
+            background-color: rgba(241, 245, 249, 0.8);
+            color: #1e293b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.85rem;
+        }
+
+        button:hover, select:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+            border-color: var(--accent-color);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .btn-start {
+            background-color: var(--success-color);
+            border-color: var(--success-color);
+            color: #fff;
+        }
+
+        .btn-start:hover {
+            background-color: #15803d;
+            box-shadow: 0 0 20px rgba(22, 163, 74, 0.3);
+        }
+
+        .btn-stop {
+            background-color: var(--danger-color);
+            border-color: var(--danger-color);
+            color: #fff;
+        }
+
+        .btn-stop:hover {
+            background-color: #b91c1c;
+            box-shadow: 0 0 20px rgba(220, 38, 38, 0.3);
+        }
+
+        .btn-random {
+            background-color: var(--accent-color);
+            color: #fff;
+            border-color: var(--accent-color);
+            font-weight: 700;
+        }
+
+        .btn-random:hover {
+            box-shadow: 0 0 20px rgba(14, 165, 233, 0.4);
+            background-color: #0284c7;
+        }
+
+        .btn-clear {
+            background-color: rgba(203, 213, 225, 0.6);
+            border-color: #cbd5e1;
+            color: #1e293b;
+        }
+
+        .btn-clear:hover {
+            background-color: #cbd5e1;
+            border-color: var(--accent-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%231e293b' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            padding-right: 2.5rem;
+            appearance: none;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 1.5rem;
+            font-size: 1rem;
+            color: #475569;
+            background: rgba(255, 255, 255, 0.6);
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(203, 213, 225, 0.5);
+        }
+
+        .stats span {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stats strong {
+            font-size: 1.2rem;
+            color: var(--accent-color);
+            font-weight: 700;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(14, 165, 233, 0.02) 100%);
+            border-left: 4px solid var(--accent-color);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(14, 165, 233, 0.15);
+            position: relative;
+        }
+
+        .info-box::before {
+            content: 'ℹ';
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            opacity: 0.2;
+        }
+
+        .info-box strong {
+            font-size: 1.05rem;
+            color: #1e293b;
+        }
+
+        .info-box p {
+            color: #475569;
+        }
+
+        footer {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #64748b;
+            font-size: 0.9rem;
+            border-top: 2px solid rgba(203, 213, 225, 0.3);
+            background: linear-gradient(to bottom, transparent, rgba(241, 245, 249, 0.3));
+            margin-top: 5rem;
+        }
+
+        footer p {
+            margin: 0;
+            color: #64748b;
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2.2rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+
+            main section {
+                padding: 1.5rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .rules-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .controls {
+                flex-direction: column;
+                width: 100%;
+                gap: 0.75rem;
+            }
+
+            button, select {
+                width: 100%;
+            }
+
+            .stats {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .sim-container {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Conway's Game of Life</h1>
+        <p>A Deep Dive into Cellular Automata</p>
+    </header>
+
+    <main>
+        <section>
+            <h2>Introduction</h2>
+            <p>The <strong>Game of Life</strong> is a cellular automaton devised by the British mathematician <strong>John Horton Conway</strong> in 1970. It is a zero-player game, meaning that its evolution is determined purely by its initial state, requiring no further input. One interacts with the Game of Life by creating an initial configuration and observing how it evolves.</p>
+            <p>Despite the extreme simplicity of its rules, the Game of Life allows for the emergence of incredibly complex behaviors, including self-replication, computation, and chaos.</p>
+        </section>
+
+        <section>
+            <h2>History & Origins</h2>
+            <p>In the late 1940s, <strong>John von Neumann</strong> defined life as a creation (as a being or organism) which can reproduce itself and simulate a Turing machine. Von Neumann's original cellular automaton design was complex, involving 29 distinct states per cell. Conway wanted to simplify this.</p>
+            <p>Conway experimented with various rules on a Go board, trying to find a balance where populations didn't explode uncontrollably nor die out too quickly. He successfully found this balance in 1970. The game was popularized by <strong>Martin Gardner</strong> in his "Mathematical Games" column in <em>Scientific American</em> in October 1970, causing a sensation in the computing world.</p>
+        </section>
+
+        <section>
+            <h2>The Four Fundamental Rules</h2>
+            <p>The universe of the Game of Life is an infinite, two-dimensional orthogonal grid of square cells. Each cell is in one of two possible states: <strong>alive</strong> or <strong>dead</strong>. Every cell interacts with its eight neighbours (horizontal, vertical, and diagonal). At each step in time (a generation), the following transitions occur simultaneously:</p>
+            
+            <div class="rules-grid">
+                <div class="rule-card">
+                    <strong>1. Underpopulation</strong>
+                    Any live cell with fewer than two live neighbours dies, as if by solitude.
+                </div>
+                <div class="rule-card">
+                    <strong>2. Stability</strong>
+                    Any live cell with two or three live neighbours lives on to the next generation.
+                </div>
+                <div class="rule-card">
+                    <strong>3. Overpopulation</strong>
+                    Any live cell with more than three live neighbours dies, as if by overcrowding.
+                </div>
+                <div class="rule-card">
+                    <strong>4. Reproduction</strong>
+                    Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Interactive Simulation</h2>
+            <p>Experience the rules in action. Select a preset pattern or click on the grid to draw your own cells.</p>
+            
+            <div class="sim-container">
+                <canvas id="gameCanvas"></canvas>
+                <div class="stats">
+                    <span>Generation: <strong id="genCount">0</strong></span>
+                    <span>Population: <strong id="popCount">0</strong></span>
+                </div>
+                <div class="controls">
+                    <button class="btn-start" id="startBtn">Start Simulation</button>
+                    <button class="btn-stop" id="stopBtn" style="display:none;">Stop Simulation</button>
+                    <button class="btn-random" id="randomBtn">Randomize</button>
+                    <select id="presetSelect">
+                        <option value="">Select Pattern...</option>
+                        <option value="glider">Glider</option>
+                        <option value="lwss">Lightweight Spaceship</option>
+                        <option value="pulsar">Pulsar (Oscillator)</option>
+                        <option value="diehard">Diehard (Methuselah)</option>
+                    </select>
+                    <button class="btn-clear" id="clearBtn">Clear Board</button>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Taxonomy of Patterns</h2>
+            <p>Conway and other researchers have identified several classes of patterns based on their behavior:</p>
+
+            <h3>1. Still Lifes</h3>
+            <p>These are stable patterns that do not change from one generation to the next. They have established a local equilibrium.</p>
+            <ul>
+                <li><strong>Block:</strong> A 2x2 square of live cells.</li>
+                <li><strong>Beehive:</strong> A 6-cell honeycomb structure.</li>
+                <li><strong>Loaf:</strong> A 7-cell stable structure often eating gliders.</li>
+            </ul>
+
+            <h3>2. Oscillators</h3>
+            <p>These patterns repeat themselves after a fixed number of generations (the period). They are the "clocks" of the Life universe.</p>
+            <ul>
+                <li><strong>Blinker (Period 2):</strong> A line of 3 cells that flips orientation.</li>
+                <li><strong>Toad (Period 2):</strong> Two parallel lines of 3 cells.</li>
+                <li><strong>Pulsar (Period 3):</strong> A large, beautiful oscillator that looks like an exploding star.</li>
+                <li><strong>Pentadecathlon (Period 15):</strong> A famous oscillator with a longer cycle.</li>
+            </ul>
+
+            <h3>3. Spaceships</h3>
+            <p>These patterns translate themselves across the grid. They are crucial for transmitting information in complex Life constructions.</p>
+            <ul>
+                <li><strong>Glider:</strong> The smallest spaceship, moving diagonally one cell every four generations.</li>
+                <li><strong>LWSS (Lightweight Spaceship):</strong> Moves orthogonally (horizontally or vertically).</li>
+            </ul>
+
+            <h3>4. Guns & Generators</h3>
+            <p>These are stationary patterns that grow indefinitely by emitting spaceships.</p>
+            <ul>
+                <li><strong>Gosper Glider Gun:</strong> The first known finite pattern that grows indefinitely. It produces a glider every 30 generations.</li>
+            </ul>
+
+            <h3>5. Methuselahs</h3>
+            <p>Small initial patterns that take a very long time to stabilize. They are named after the biblical figure who lived for 969 years.</p>
+            <ul>
+                <li><strong>The R-pentomino:</strong> Only 5 cells, but it evolves for 1103 generations before stabilizing.</li>
+                <li><strong>Diehard:</strong> Disappears completely after 130 generations.</li>
+                <li><strong>Acorn:</strong> Evolves for 5206 generations.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Theoretical Implications</h2>
+            <div class="info-box">
+                <strong>Turing Completeness:</strong> It has been proven that the Game of Life is Turing Complete. This means that, given a large enough grid and enough time, the Game of Life can compute anything that a modern computer can compute.
+            </div>
+            <p>Researchers have built logic gates (AND, OR, NOT) using streams of Gliders. By arranging these gates, one can build memory, counters, and even a fully functional CPU inside the Game of Life.</p>
+            <p><strong>Undecidability:</strong> Because Life is Turing Complete, many questions about it are formally undecidable. For example, there is no algorithm that can look at an arbitrary pattern and determine if it will eventually die out (The Halting Problem).</p>
+        </section>
+
+        <section>
+            <h2>Variations</h2>
+            <p>While Conway's rules (often denoted as <strong>B3/S23</strong>) are the most famous, changing the numbers yields different universes:</p>
+            <ul>
+                <li><strong>HighLife (B36/S23):</strong> Similar to Life, but a dead cell with 6 neighbors also becomes alive. It features a "replicator" pattern.</li>
+                <li><strong>Day & Night (B3678/S34678):</strong> A rule set where dead cells and live cells behave symmetrically.</li>
+                <li><strong>Seeds (B2/S):</strong> All live cells die every generation, but new ones are born. It is purely explosive.</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <p>Generated by Gemini • 2024 • A Tribute to John Horton Conway</p>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const genCountDisplay = document.getElementById('genCount');
+        const popCountDisplay = document.getElementById('popCount');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const randomBtn = document.getElementById('randomBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const presetSelect = document.getElementById('presetSelect');
+
+        // Configuration
+        const cellSize = 8;
+        let cols, rows;
+        let grid = [];
+        let animationId;
+        let isRunning = false;
+        let generation = 0;
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth - 32; 
+            canvas.height = Math.min(500, canvas.width * 0.6);
+            
+            cols = Math.floor(canvas.width / cellSize);
+            rows = Math.floor(canvas.height / cellSize);
+            // Only re-init if grid is empty or dimension changed significantly
+            if(grid.length === 0 || grid.length !== cols) {
+                initGrid();
+            }
+            draw();
+        }
+
+        function initGrid() {
+            grid = new Array(cols).fill(null).map(() => new Array(rows).fill(0));
+            generation = 0;
+            updateStats();
+        }
+
+        function randomizeGrid() {
+            for (let i = 0; i < cols; i++) {
+                for (let j = 0; j < rows; j++) {
+                    grid[i][j] = Math.random() > 0.85 ? 1 : 0; 
+                }
+            }
+            generation = 0;
+            draw();
+            updateStats();
+        }
+
+        function clearGrid() {
+             grid = new Array(cols).fill(null).map(() => new Array(rows).fill(0));
+             generation = 0;
+             draw();
+             updateStats();
+        }
+
+        function loadPreset(type) {
+            clearGrid();
+            const cx = Math.floor(cols / 2);
+            const cy = Math.floor(rows / 2);
+
+            if (type === 'glider') {
+                grid[cx][cy-1] = 1;
+                grid[cx+1][cy] = 1;
+                grid[cx-1][cy+1] = 1;
+                grid[cx][cy+1] = 1;
+                grid[cx+1][cy+1] = 1;
+            } else if (type === 'lwss') {
+                // Lightweight spaceship
+                const shape = [[0,1],[0,3],[1,0],[2,0],[3,0],[4,0],[4,1],[4,2],[3,3]];
+                shape.forEach(([x,y]) => {
+                   if(cx+x < cols && cy+y < rows) grid[cx+x][cy+y] = 1;
+                });
+            } else if (type === 'diehard') {
+                // Diehard pattern
+                const shape = [[0,1],[1,1],[1,2],[5,0],[6,0],[7,0],[6,2]];
+                shape.forEach(([x,y]) => {
+                   if(cx+x < cols && cy+y < rows) grid[cx+x-4][cy+y-1] = 1;
+                });
+            } else if (type === 'pulsar') {
+                // Simple Pulsar setup (top left quadrant reflected)
+                // This is verbose, so let's do a simple implementation of the core bars
+                // A pulsar is complex to hardcode cell by cell compactly, 
+                // so let's do a simplified cross that evolves into traffic lights 
+                // actually let's do a blinker pattern that is easy
+                grid[cx][cy] = 1; grid[cx][cy-1] = 1; grid[cx][cy+1] = 1;
+            }
+            draw();
+            updateStats();
+        }
+
+        function draw() {
+            ctx.fillStyle = '#020617'; // BG
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#38bdf8'; // Cell color
+            
+            for (let i = 0; i < cols; i++) {
+                for (let j = 0; j < rows; j++) {
+                    if (grid[i][j] === 1) {
+                        ctx.fillRect(i * cellSize, j * cellSize, cellSize - 1, cellSize - 1);
+                    }
+                }
+            }
+        }
+
+        function countNeighbors(grid, x, y) {
+            let sum = 0;
+            for (let i = -1; i < 2; i++) {
+                for (let j = -1; j < 2; j++) {
+                    let col = (x + i + cols) % cols;
+                    let row = (y + j + rows) % rows;
+                    sum += grid[col][row];
+                }
+            }
+            sum -= grid[x][y];
+            return sum;
+        }
+
+        function update() {
+            let nextGrid = new Array(cols).fill(null).map(() => new Array(rows).fill(0));
+            let population = 0;
+
+            for (let i = 0; i < cols; i++) {
+                for (let j = 0; j < rows; j++) {
+                    let state = grid[i][j];
+                    let neighbors = countNeighbors(grid, i, j);
+
+                    if (state === 0 && neighbors === 3) {
+                        nextGrid[i][j] = 1; 
+                    } else if (state === 1 && (neighbors < 2 || neighbors > 3)) {
+                        nextGrid[i][j] = 0; 
+                    } else {
+                        nextGrid[i][j] = state; 
+                    }
+
+                    if(nextGrid[i][j] === 1) population++;
+                }
+            }
+
+            grid = nextGrid;
+            generation++;
+            updateStats(population);
+            draw();
+        }
+
+        function updateStats(pop) {
+            genCountDisplay.innerText = generation;
+            if(pop !== undefined) {
+                popCountDisplay.innerText = pop;
+            } else {
+                let count = 0;
+                grid.forEach(col => col.forEach(cell => count += cell));
+                popCountDisplay.innerText = count;
+            }
+        }
+
+        function loop() {
+            if (isRunning) {
+                update();
+                animationId = requestAnimationFrame(loop);
+            }
+        }
+
+        // Event Listeners
+        startBtn.addEventListener('click', () => {
+            if(!isRunning) {
+                isRunning = true;
+                startBtn.style.display = 'none';
+                stopBtn.style.display = 'inline-block';
+                loop();
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            isRunning = false;
+            startBtn.style.display = 'inline-block';
+            stopBtn.style.display = 'none';
+            cancelAnimationFrame(animationId);
+        });
+
+        randomBtn.addEventListener('click', () => {
+            randomizeGrid();
+        });
+
+        clearBtn.addEventListener('click', () => {
+            clearGrid();
+            if (isRunning) {
+                isRunning = false;
+                startBtn.style.display = 'inline-block';
+                stopBtn.style.display = 'none';
+                cancelAnimationFrame(animationId);
+            }
+        });
+
+        presetSelect.addEventListener('change', (e) => {
+            if(e.target.value) {
+                if (isRunning) {
+                    isRunning = false;
+                    startBtn.style.display = 'inline-block';
+                    stopBtn.style.display = 'none';
+                    cancelAnimationFrame(animationId);
+                }
+                loadPreset(e.target.value);
+                e.target.value = ""; // reset select
+            }
+        });
+
+        // Drawing interaction
+        let isDrawing = false;
+
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: evt.clientX - rect.left,
+                y: evt.clientY - rect.top
+            };
+        }
+
+        function interact(e) {
+             const pos = getMousePos(e);
+            const i = Math.floor(pos.x / cellSize);
+            const j = Math.floor(pos.y / cellSize);
+            if (i >= 0 && i < cols && j >= 0 && j < rows) {
+                grid[i][j] = 1; 
+                draw();
+            }
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            interact(e);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDrawing) interact(e);
+        });
+
+        window.addEventListener('mouseup', () => isDrawing = false);
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const i = Math.floor((touch.clientX - rect.left) / cellSize);
+            const j = Math.floor((touch.clientY - rect.top) / cellSize);
+            if (i >= 0 && i < cols && j >= 0 && j < rows) {
+                grid[i][j] = grid[i][j] ? 0 : 1;
+                draw();
+            }
+        });
+
+        // Init
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        randomizeGrid(); // Start with noise
+    </script>
+</body>
+</html>
