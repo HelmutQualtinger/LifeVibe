@@ -11,7 +11,7 @@ MARGIN = 1            # Gap between cells
 BUTTON_PANEL_HEIGHT = 50 # Height for the button panel
 WIDTH = GRID_WIDTH * (CELL_SIZE + MARGIN) + MARGIN
 HEIGHT = GRID_HEIGHT * (CELL_SIZE + MARGIN) + MARGIN + BUTTON_PANEL_HEIGHT
-FPS = 10              # Speed of the game
+FPS = 60              # Speed of the game
 
 # --- Colors (R, G, B) ---
 BLACK = (20, 20, 20)
@@ -36,35 +36,19 @@ BUTTON_WIDTH = 100
 BUTTON_HEIGHT = 30
 BUTTON_MARGIN = 10
 
-buttons = [
-    {"text": "Start", "action": "start", "rect": None},
-    {"text": "Stop", "action": "stop", "rect": None},
-    {"text": "Step", "action": "step", "rect": None},
-    {"text": "Quit", "action": "quit", "rect": None},
-]
-BUTTON_COLOR = (50, 50, 50)
-BUTTON_TEXT_COLOR = (255, 255, 255)
-
-# Neighbor-based Colors (Heatmap)
-# 0-1 Neighbors (Underpopulated - Dying): Blue/Cyan
-COLOR_LONELY = (0, 255, 255) 
-# 2-3 Neighbors (Stable/Reporducing - Healthy): Green
-COLOR_STABLE = (0, 255, 0)    
-# 4+ Neighbors (Overpopulated - Dying): Red/Orange
-COLOR_CROWDED = (255, 69, 0)
-
-buttons = [
-    {"text": "Start", "action": "start", "rect": None},
-    {"text": "Stop", "action": "stop", "rect": None},
-    {"text": "Step", "action": "step", "rect": None},
-    {"text": "Quit", "action": "quit", "rect": None},
+ALL_BUTTONS = [
+    {"text": "Start", "action": "start"},
+    {"text": "Stop", "action": "stop"},
+    {"text": "Step", "action": "step"},
+    {"text": "Clear", "action": "clear"},
+    {"text": "Quit", "action": "quit"},
 ]
 
 def init_grid():
     """Creates an empty 80x120 grid."""
     return np.zeros((GRID_HEIGHT, GRID_WIDTH), dtype=np.int8)
 
-@jit(nopython=True)
+@jit(nopython=True, parallel=True,fastmath=True)
 def _count_neighbors(grid, r, c, height, width):
     """
     Counts alive neighbors for cell at (r, c).
@@ -80,7 +64,7 @@ def _count_neighbors(grid, r, c, height, width):
                 count += grid[nr, nc]
     return count
 
-@jit(nopython=True)
+@jit(nopython=True, parallel=True,fastmath=True)
 def _update_grid_numba(grid, height, width):
     """Applies Conway's Game of Life Rules. Numba-compiled."""
     new_grid = grid.copy()
@@ -110,22 +94,29 @@ def get_neighbors(grid, r, c):
     """
     return _count_neighbors(grid, r, c, GRID_HEIGHT, GRID_WIDTH)
 
-def draw_buttons(screen, font):
+def draw_buttons(screen, font, paused, button_rects):
     """Draws the control buttons at the bottom of the screen."""
+    # Filter buttons based on paused state
+    if paused:
+        visible_buttons = [b for b in ALL_BUTTONS if b["action"] != "stop"]
+    else:
+        visible_buttons = [b for b in ALL_BUTTONS if b["action"] != "start"]
+
     # Calculate starting x position to center the buttons
-    total_button_width = len(buttons) * BUTTON_WIDTH + (len(buttons) - 1) * BUTTON_MARGIN
+    total_button_width = len(visible_buttons) * BUTTON_WIDTH + (len(visible_buttons) - 1) * BUTTON_MARGIN
     start_x = (WIDTH - total_button_width) // 2
-    
+
     # Position buttons below the grid
     button_y = HEIGHT - BUTTON_PANEL_HEIGHT + (BUTTON_PANEL_HEIGHT - BUTTON_HEIGHT) // 2
 
-    for i, button in enumerate(buttons):
+    button_rects.clear()
+    for i, button in enumerate(visible_buttons):
         x = start_x + i * (BUTTON_WIDTH + BUTTON_MARGIN)
         rect = pygame.Rect(x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT)
-        button["rect"] = rect # Store rect for click detection
-        
+        button_rects[button["action"]] = rect
+
         pygame.draw.rect(screen, BUTTON_COLOR, rect)
-        
+
         # Render text
         text_surface = font.render(button["text"], True, BUTTON_TEXT_COLOR)
         text_rect = text_surface.get_rect(center=rect.center)
@@ -153,13 +144,14 @@ def main():
     paused = True # Start paused so user can draw
     generation = 0
     active_cells = 0
+    button_rects = {}
 
     while running:
         # --- Event Handling ---
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            
+
             # Mouse Controls
             if pygame.mouse.get_pressed()[0]: # Left Click
                 pos = pygame.mouse.get_pos()
@@ -169,18 +161,21 @@ def main():
                     c = pos[0] // (CELL_SIZE + MARGIN)
                     r = pos[1] // (CELL_SIZE + MARGIN)
                     if 0 <= r < GRID_HEIGHT and 0 <= c < GRID_WIDTH:
-                        grid[r][c] = 1 # Set to Alive
+                        grid[r][c] = 1 - grid[r][c] # Toggle cell
                 else: # Click on button panel
-                    for button in buttons:
-                        if button["rect"] and button["rect"].collidepoint(pos):
-                            if button["action"] == "start":
+                    for action, rect in button_rects.items():
+                        if rect.collidepoint(pos):
+                            if action == "start":
                                 paused = False
-                            elif button["action"] == "stop":
+                            elif action == "stop":
                                 paused = True
-                            elif button["action"] == "step":
+                            elif action == "step":
                                 if paused: # Only step if paused
                                     grid = update_grid(grid)
-                            elif button["action"] == "quit":
+                            elif action == "clear":
+                                grid = init_grid()
+                                generation = 0
+                            elif action == "quit":
                                 running = False
 
             if pygame.mouse.get_pressed()[2]: # Right Click
@@ -191,7 +186,7 @@ def main():
                     grid[r][c] = 0 # Set to Dead
 
             # Keyboard Controls
-        
+
         # --- Logic ---
         if not paused:
             grid = update_grid(grid)
@@ -219,7 +214,7 @@ def main():
                     pygame.draw.rect(screen, GRID_DARK_BLUE, (x, y, CELL_SIZE, CELL_SIZE))
 
         # Draw buttons
-        draw_buttons(screen, font)
+        draw_buttons(screen, font, paused, button_rects)
 
         # Draw generation and active cells counter
         gen_text = font.render(f"Gen: {generation}  Cells: {int(active_cells)}", True, WHITE)
