@@ -33,6 +33,7 @@ Both versions are feature-complete and share the same game mechanics and UI desi
 - ✅ Active cell counter
 - ✅ Color-coded cells (cyan/green/orange based on neighbors)
 - ✅ Edit mode indicator (white border when paused)
+- ✅ Pattern loading from 28 preset patterns
 - ✅ 60 FPS performance
 
 #### Technical Optimizations
@@ -66,6 +67,7 @@ Both versions are feature-complete and share the same game mechanics and UI desi
 - ✅ Color-coded visualization
 - ✅ Paused state indicator (white border)
 - ✅ Fixed click position accuracy with DPI scaling
+- ✅ Pattern loading from 28 preset patterns via modal UI
 
 #### Technical Notes
 - Click detection accounts for canvas scaling and DPI
@@ -84,10 +86,11 @@ Both versions are feature-complete and share the same game mechanics and UI desi
 - UI: Dark grey buttons (#323232)
 
 #### Button Logic
-- **Paused state**: Shows Start, Step, Clear, Quit
-- **Running state**: Shows Stop, Step, Clear, Quit
+- **Paused state**: Shows Start, Step, Clear, Patterns, Quit
+- **Running state**: Shows Stop, Step, Clear, Patterns, Quit
 - Clear always available for quick reset
 - Step only advances when paused
+- Patterns button opens modal with 28 preset patterns
 
 #### Grid Specifications
 - Dimensions: 120x80 cells

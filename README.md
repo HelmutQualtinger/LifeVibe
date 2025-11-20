@@ -64,7 +64,45 @@ Open `index.html` in any modern web browser.
 - **Stop**: Pause the simulation
 - **Step**: Advance one generation (only when paused)
 - **Clear**: Reset grid to empty and counter to 0
+- **Patterns**: Open pattern selection menu
 - **Quit**: Exit the application
+
+## Pattern Library
+
+Both versions include 28 preset patterns organized by category:
+
+### Oscillators (Period-N patterns)
+- **Blinker** (Period-2): Simplest oscillator, alternates between horizontal and vertical
+- **Toad** (Period-2): Two staggered lines that flip
+- **Beacon** (Period-2): Four-block pattern with pulsing corners
+- **Pulsar** (Period-3): 15x15 symmetric pattern, complex and beautiful
+- **Penta-Decathlon** (Period-15): Rare oscillator with 15-generation period
+
+### Spaceships (Moving patterns)
+- **Glider**: Classic lightweight spaceship, moves diagonally
+- **LWSS** (Lightweight): Faster horizontal spaceship
+- **MWSS** (Middleweight): Medium-speed horizontal spaceship
+- **HWSS** (Heavyweight): Larger horizontal spaceship
+
+### Still Lifes (Stable patterns)
+- **Block**: Simple 2x2 square
+- **Tub**: Diamond shape surrounded by empty space
+- **Beehive**: Hexagonal cluster
+- **Loaf**: House-like shape
+- **Boat**: Triangle formation
+- **Pond**: Two beehives in contact
+- **Ship**: Extended boat variant
+- **Aircraft**: Asymmetric stable configuration
+
+### Guns & Puffers
+- **Gosper Glider Gun**: Famous pattern that continuously generates gliders!
+
+### Chaotic/Evolving Patterns
+- **Beehive with Tail**: Still life with evolving extension
+- **Pi Heptomino**: 7-cell pattern with complex evolution
+- **B Heptomino**: 7-cell pattern with dramatic growth
+- **Acorn**: 7-cell pattern that slowly grows to 633 cells
+- **Die Hard**: 8-cell pattern that dies completely in 130 generations
 
 ## Project Structure
 
@@ -92,8 +130,11 @@ The web version works in all modern browsers that support:
 ## Future Improvements
 
 Possible enhancements:
-- Save/Load grid patterns
-- Preset patterns (gliders, blinkers, oscillators)
+- Save/Load custom grid patterns to JSON
 - Zoom and pan controls
+- Variable speed/FPS adjustment
 - Color theme customization
 - Export to image or animation format
+- Keyboard shortcuts (Space=Start/Stop, C=Clear, etc.)
+- Touch support for mobile web version
+- Statistics display (population history graph)
