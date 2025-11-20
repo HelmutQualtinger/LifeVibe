@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game of Life</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #333;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        h1 {
+            color: #fff;
+            font-size: 32px;
+        }
+
+        #canvas {
+            border: 2px solid #fff;
+            background-color: #808080;
+            cursor: crosshair;
+            display: block;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #323232;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #444;
+        }
+
+        button:active {
+            background-color: #222;
+        }
+
+        .info {
+            color: #fff;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .instructions {
+            color: #aaa;
+            font-size: 14px;
+            text-align: center;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Game of Life</h1>
+        <canvas id="canvas" width="960" height="650"></canvas>
+        <div class="info">
+            <p>Generation: <span id="generation">0</span> | Cells: <span id="cells">0</span></p>
+        </div>
+        <div class="controls" id="controls">
+            <!-- Buttons will be added here dynamically -->
+        </div>
+        <div class="instructions">
+            <p><strong>Left Click:</strong> Toggle cell | <strong>Right Click:</strong> Kill cell</p>
+        </div>
+    </div>
+
+    <script>
+        const GRID_WIDTH = 120;
+        const GRID_HEIGHT = 80;
+        const CELL_SIZE = 8;
+        const MARGIN = 1;
+        const FPS = 60;
+
+        // Colors
+        const BACKGROUND_GREY = '#808080';
+        const GRID_DARK_BLUE = '#00008B';
+        const COLOR_LONELY = '#00FFFF';
+        const COLOR_STABLE = '#00FF00';
+        const COLOR_CROWDED = '#FF4500';
+        const WHITE = '#FFFFFF';
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let grid = initGrid();
+        let running = false;
+        let paused = true;
+        let generation = 0;
+        let activeCells = 0;
+        let lastClickedCell = null;
+
+        function initGrid() {
+            return Array(GRID_HEIGHT).fill(null).map(() => Array(GRID_WIDTH).fill(false));
+        }
+
+        function countNeighbors(grid, r, c) {
+            let count = 0;
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    if (i === 0 && j === 0) continue;
+                    const nr = r + i;
+                    const nc = c + j;
+                    if (nr >= 0 && nr < GRID_HEIGHT && nc >= 0 && nc < GRID_WIDTH) {
+                        count += grid[nr][nc] ? 1 : 0;
+                    }
+                }
+            }
+            return count;
+        }
+
+        function updateGrid() {
+            const newGrid = grid.map(row => [...row]);
+
+            for (let r = 0; r < GRID_HEIGHT; r++) {
+                for (let c = 0; c < GRID_WIDTH; c++) {
+                    const neighbors = countNeighbors(grid, r, c);
+                    const state = grid[r][c];
+
+                    if (state) { // If alive
+                        if (neighbors < 2 || neighbors > 3) {
+                            newGrid[r][c] = false;
+                        }
+                    } else { // If dead
+                        if (neighbors === 3) {
+                            newGrid[r][c] = true;
+                        }
+                    }
+                }
+            }
+            return newGrid;
+        }
+
+        function getCellColor(neighbors) {
+            if (neighbors < 2) return COLOR_LONELY;
+            if (neighbors <= 3) return COLOR_STABLE;
+            return COLOR_CROWDED;
+        }
+
+        function draw() {
+            // Fill background
+            ctx.fillStyle = BACKGROUND_GREY;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid
+            for (let r = 0; r < GRID_HEIGHT; r++) {
+                for (let c = 0; c < GRID_WIDTH; c++) {
+                    const x = c * (CELL_SIZE + MARGIN) + MARGIN;
+                    const y = r * (CELL_SIZE + MARGIN) + MARGIN;
+
+                    if (grid[r][c]) {
+                        const neighbors = countNeighbors(grid, r, c);
+                        ctx.fillStyle = getCellColor(neighbors);
+                        ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                    } else {
+                        ctx.fillStyle = GRID_DARK_BLUE;
+                        ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                    }
+                }
+            }
+
+            // Draw border if paused
+            if (paused) {
+                ctx.strokeStyle = WHITE;
+                ctx.lineWidth = 2;
+                const gridHeight = GRID_HEIGHT * (CELL_SIZE + MARGIN) + MARGIN;
+                ctx.strokeRect(0, 0, canvas.width, gridHeight);
+            }
+
+            // Update info
+            activeCells = grid.reduce((sum, row) => sum + row.filter(cell => cell).length, 0);
+            document.getElementById('generation').textContent = generation;
+            document.getElementById('cells').textContent = activeCells;
+        }
+
+        function gameLoop() {
+            if (!paused) {
+                grid = updateGrid();
+                generation++;
+            }
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateButtons() {
+            const controlsDiv = document.getElementById('controls');
+            controlsDiv.innerHTML = '';
+
+            const buttons = [
+                { text: paused ? 'Start' : 'Stop', action: paused ? 'start' : 'stop' },
+                { text: 'Step', action: 'step' },
+                { text: 'Clear', action: 'clear' },
+                { text: 'Quit', action: 'quit' }
+            ];
+
+            buttons.forEach(btn => {
+                const button = document.createElement('button');
+                button.textContent = btn.text;
+                button.onclick = () => handleButtonClick(btn.action);
+                controlsDiv.appendChild(button);
+            });
+        }
+
+        function handleButtonClick(action) {
+            switch (action) {
+                case 'start':
+                    paused = false;
+                    updateButtons();
+                    break;
+                case 'stop':
+                    paused = true;
+                    updateButtons();
+                    break;
+                case 'step':
+                    if (paused) {
+                        grid = updateGrid();
+                        generation++;
+                        draw();
+                    }
+                    break;
+                case 'clear':
+                    grid = initGrid();
+                    generation = 0;
+                    draw();
+                    break;
+                case 'quit':
+                    if (confirm('Close this window?')) {
+                        window.close();
+                    }
+                    break;
+            }
+        }
+
+        function getCellFromMouse(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+
+            // Subtract the initial margin, then divide by cell+margin size
+            const adjustedX = x - MARGIN;
+            const adjustedY = y - MARGIN;
+
+            const c = Math.floor(adjustedX / (CELL_SIZE + MARGIN));
+            const r = Math.floor(adjustedY / (CELL_SIZE + MARGIN));
+
+            if (r >= 0 && r < GRID_HEIGHT && c >= 0 && c < GRID_WIDTH) {
+                return { r, c };
+            }
+            return null;
+        }
+
+        canvas.addEventListener('click', (e) => {
+            const cell = getCellFromMouse(e);
+            if (cell) {
+                grid[cell.r][cell.c] = !grid[cell.r][cell.c];
+                draw();
+            }
+        });
+
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const cell = getCellFromMouse(e);
+            if (cell) {
+                grid[cell.r][cell.c] = false;
+                draw();
+            }
+        });
+
+        // Initialize
+        updateButtons();
+        draw();
+        gameLoop();
+    </script>
+</body>
+</html>

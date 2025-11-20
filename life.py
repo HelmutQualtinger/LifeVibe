@@ -126,7 +126,10 @@ def get_cell_color(neighbors):
     """Returns color based on neighbor count."""
     if neighbors < 2:
         return COLOR_LONELY
-    elif neighbors <= 3:
+    elif neighbors <= 3:        return COLOR_STABLE
+    elif neighbors == 0:
+        return WHITE
+
         return COLOR_STABLE
     else:
         return COLOR_CROWDED
