@@ -9,6 +9,10 @@ This project implements Conway's Game of Life, a cellular automaton where cells 
 - A dead cell with exactly 3 live neighbors becomes alive
 - All other cells die or stay dead
 
+## Screenshot
+
+![Game of Life](screenshot.png)
+
 ## Features
 
 - **Color-coded cell visualization**: Cells are colored based on their neighbor count
