@@ -158,6 +158,14 @@
         </div>
     </div>
 
+    <div class="modal" id="patternModal">
+        <div class="modal-content">
+            <h2>Select Pattern</h2>
+            <div class="pattern-list" id="patternList"></div>
+            <button class="close-modal" onclick="closePatternModal()">Cancel</button>
+        </div>
+    </div>
+
     <script>
         const GRID_WIDTH = 120;
         const GRID_HEIGHT = 80;
@@ -172,6 +180,160 @@
         const COLOR_STABLE = '#00FF00';
         const COLOR_CROWDED = '#FF4500';
         const WHITE = '#FFFFFF';
+
+        // Pattern definitions
+        const PATTERNS = {
+            // Oscillators
+            "blinker": `
+..O..
+..O..
+..O..
+`,
+            "toad": `
+.OOO
+OOO.
+`,
+            "beacon": `
+OO..
+OO..
+..OO
+..OO
+`,
+            "pulsar": `
+...OOO...OOO...
+...............
+.O....O.O....O.
+.O....O.O....O.
+.O....O.O....O.
+...OOO...OOO...
+...............
+...OOO...OOO...
+.O....O.O....O.
+.O....O.O....O.
+.O....O.O....O.
+...............
+...OOO...OOO...
+`,
+            "penta_decathlon": `
+..OOO..
+O.....O
+O.....O
+O.....O
+..OOO..
+`,
+
+            // Spaceships
+            "glider": `
+.O.
+..O
+OOO
+`,
+            "lwss": `
+.O..O
+O.....
+O.O..O
+.OOOO.
+`,
+            "mwss": `
+.O...O
+O......
+O..O..O
+.OOOOO.
+`,
+            "hwss": `
+.O....O
+O.......
+O...O..O
+.OOOOOO.
+`,
+
+            // Still lifes
+            "block": `
+OO
+OO
+`,
+            "tub": `
+.O.
+OOO
+.O.
+`,
+            "beehive": `
+.OO.
+O..O
+.OO.
+`,
+            "loaf": `
+.OO.
+O..O
+.O.O
+..O.
+`,
+            "boat": `
+O.O
+OOO
+.O.
+`,
+            "pond": `
+.OO..
+O..O.
+O..O.
+.OO..
+`,
+            "ship": `
+O.O.
+OOO.
+.O..
+`,
+            "aircraft": `
+..O.
+O...
+OOO.
+.O.O
+`,
+
+            // Guns & Puffers
+            "gosper_glider_gun": `
+........................O...........
+......................O.O...........
+............OO......OO............OO
+...........O...O....OO............OO
+OO........O.....O...OO..............
+OO........O...O.OO....O.O...........
+..........O.....O.......O...........
+...........O...O....................
+............OO.......................
+`,
+
+            // Other patterns
+            "beehive_with_tail": `
+.OO.
+O..O
+.OO.
+.O..
+`,
+            "pi_heptomino": `
+OOO
+O.O
+.OO
+`,
+            "b_heptomino": `
+.OO
+OO.
+.O.
+.O.
+`,
+            "acorn": `
+.O....
+...O..
+OO.OOO
+`,
+            "die_hard": `
+......O
+OO.....
+.O...OO
+...O...
+`
+        };
 
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -283,6 +445,7 @@
                 { text: paused ? 'Start' : 'Stop', action: paused ? 'start' : 'stop' },
                 { text: 'Step', action: 'step' },
                 { text: 'Clear', action: 'clear' },
+                { text: 'Patterns', action: 'patterns' },
                 { text: 'Quit', action: 'quit' }
             ];
 
@@ -316,6 +479,9 @@
                     generation = 0;
                     draw();
                     break;
+                case 'patterns':
+                    openPatternModal();
+                    break;
                 case 'quit':
                     if (confirm('Close this window?')) {
                         window.close();
@@ -323,6 +489,65 @@
                     break;
             }
         }
+
+        function loadPattern(patternName) {
+            const patternString = PATTERNS[patternName];
+            if (!patternString) return;
+
+            grid = initGrid();
+            const patternLines = patternString.trim().split('\n');
+            const patternHeight = patternLines.length;
+            const patternWidth = Math.max(...patternLines.map(line => line.trim().length));
+
+            const offsetR = Math.floor((GRID_HEIGHT - patternHeight) / 2);
+            const offsetC = Math.floor((GRID_WIDTH - patternWidth) / 2);
+
+            patternLines.forEach((line, r) => {
+                line.trim().split('').forEach((char, c) => {
+                    if (char === 'O') {
+                        const row = r + offsetR;
+                        const col = c + offsetC;
+                        if (row >= 0 && row < GRID_HEIGHT && col >= 0 && col < GRID_WIDTH) {
+                            grid[row][col] = true;
+                        }
+                    }
+                });
+            });
+
+            generation = 0;
+            paused = true;
+            closePatternModal();
+            updateButtons();
+            draw();
+        }
+
+        function openPatternModal() {
+            const modal = document.getElementById('patternModal');
+            const patternList = document.getElementById('patternList');
+            patternList.innerHTML = '';
+
+            Object.keys(PATTERNS).sort().forEach(patternName => {
+                const btn = document.createElement('button');
+                btn.className = 'pattern-btn';
+                btn.textContent = patternName.charAt(0).toUpperCase() + patternName.slice(1);
+                btn.onclick = () => loadPattern(patternName);
+                patternList.appendChild(btn);
+            });
+
+            modal.classList.add('active');
+        }
+
+        function closePatternModal() {
+            const modal = document.getElementById('patternModal');
+            modal.classList.remove('active');
+        }
+
+        // Close modal when clicking outside of it
+        document.getElementById('patternModal').addEventListener('click', (e) => {
+            if (e.target.id === 'patternModal') {
+                closePatternModal();
+            }
+        });
 
         function getCellFromMouse(e) {
             const rect = canvas.getBoundingClientRect();
