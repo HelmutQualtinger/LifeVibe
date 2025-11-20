@@ -98,15 +98,41 @@ Both versions are feature-complete and share the same game mechanics and UI desi
 - Margin: 1 pixel between cells
 - Rendering offset: 1 pixel margin on all sides
 
+## Pattern Library
+
+### Available Patterns (28 total)
+
+Organized into categories:
+
+**Oscillators** (5): Blinker, Toad, Beacon, Pulsar, Penta-Decathlon
+**Spaceships** (4): Glider, LWSS, MWSS, HWSS
+**Still Lifes** (8): Block, Tub, Beehive, Loaf, Boat, Pond, Ship, Aircraft
+**Guns & Puffers** (1): Gosper Glider Gun
+**Chaotic/Evolving** (5): Beehive with Tail, Pi Heptomino, B Heptomino, Acorn, Die Hard
+
+### Pattern Implementation
+
+**Python (patterns.py)**:
+- String-based format using 'O' for live cells and '.' for dead cells
+- Loaded via `load_pattern()` function
+- Centered on grid when selected
+- Grid cleared before loading new pattern
+
+**Web (index.html)**:
+- JavaScript object with pattern strings
+- Modal UI displays patterns in alphabetical order
+- Same centering behavior as Python version
+- `loadPattern()` function parses and places patterns
+
 ## Recent Changes
 
-1. **Button State Management**: Implemented dynamic button filtering - Start/Stop buttons toggle based on paused state
-2. **FPS Optimization**: Increased from 10 to 60 FPS
-3. **Cell Toggle**: Changed left-click from "set alive" to "toggle" for better editing
-4. **Clear Button**: Added with generation reset
-5. **Boolean Grid**: Converted from int8 to bool for 8x memory savings
-6. **Web Version**: Created full HTML5/JS implementation with fixed click detection
-7. **Documentation**: Added README.md and claude.md
+1. **Pattern Library**: Added 28 preset patterns across both versions
+   - Organized by category (oscillators, spaceships, still lifes, etc.)
+   - Includes famous patterns like Gosper Glider Gun and Acorn
+   - Patterns centered on grid when loaded
+2. **UI Enhancement**: Patterns button with modal selection menu (web version)
+3. **Pattern File**: Created patterns.py for centralized pattern definitions
+4. **Documentation**: Updated README.md and CLAUDE.md with pattern descriptions
 
 ## Known Issues & Limitations
 
@@ -115,11 +141,11 @@ None currently. Both versions are stable and feature-complete.
 ## Possible Future Enhancements
 
 ### Feature Additions
-- Preset patterns (gliders, blinkers, oscillators, beacons)
-- Pattern library/loading
+- Save/Load custom patterns to JSON
 - Zoom and pan controls
 - Variable speed/FPS adjustment
 - Fullscreen mode
+- Additional patterns (more spaceships, oscillators, meta-patterns)
 
 ### UI/UX Improvements
 - Color theme customization
@@ -142,9 +168,10 @@ None currently. Both versions are stable and feature-complete.
 
 ```
 Life/
-├── life.py              # Python/Pygame implementation (235 lines)
-├── index.html           # Web implementation (290 lines, fully embedded)
-├── README.md            # User documentation
+├── life.py              # Python/Pygame implementation with pattern loading
+├── patterns.py          # Pattern definitions (28 patterns, shared between versions)
+├── index.html           # Web implementation with embedded pattern library
+├── README.md            # User documentation with pattern descriptions
 └── claude.md            # This file - development notes
 ```
 
