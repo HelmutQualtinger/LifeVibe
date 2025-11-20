@@ -1,23 +1,19 @@
 import pygame
 import sys
-import numpy as np
-from numba import jit
+import copy
 
 # --- Configuration ---
-GRID_WIDTH = 120      # 120 columns
-GRID_HEIGHT = 80      # 80 rows
-CELL_SIZE = 8         # Pixel size of each cell
+GRID_SIZE = 40        # 40x40 Grid
+CELL_SIZE = 15        # Pixel size of each cell
 MARGIN = 1            # Gap between cells
 BUTTON_PANEL_HEIGHT = 50 # Height for the button panel
-WIDTH = GRID_WIDTH * (CELL_SIZE + MARGIN) + MARGIN
-HEIGHT = GRID_HEIGHT * (CELL_SIZE + MARGIN) + MARGIN + BUTTON_PANEL_HEIGHT
+WIDTH = GRID_SIZE * (CELL_SIZE + MARGIN) + MARGIN
+HEIGHT = WIDTH + BUTTON_PANEL_HEIGHT # Square window + button panel
 FPS = 10              # Speed of the game
 
 # --- Colors (R, G, B) ---
 BLACK = (20, 20, 20)
-BACKGROUND_GREY = (128, 128, 128)
 GRID_COLOR = (40, 40, 40)
-GRID_DARK_BLUE = (0, 0, 139)
 WHITE = (255, 255, 255)
 GREY = (100, 100, 100)
 BUTTON_COLOR = (50, 50, 50)
@@ -42,94 +38,48 @@ buttons = [
     {"text": "Step", "action": "step", "rect": None},
     {"text": "Quit", "action": "quit", "rect": None},
 ]
-BUTTON_COLOR = (50, 50, 50)
-BUTTON_TEXT_COLOR = (255, 255, 255)
-
-# Neighbor-based Colors (Heatmap)
-# 0-1 Neighbors (Underpopulated - Dying): Blue/Cyan
-COLOR_LONELY = (0, 255, 255) 
-# 2-3 Neighbors (Stable/Reporducing - Healthy): Green
-COLOR_STABLE = (0, 255, 0)    
-# 4+ Neighbors (Overpopulated - Dying): Red/Orange
-COLOR_CROWDED = (255, 69, 0)
-
-buttons = [
-    {"text": "Start", "action": "start", "rect": None},
-    {"text": "Stop", "action": "stop", "rect": None},
-    {"text": "Step", "action": "step", "rect": None},
-    {"text": "Quit", "action": "quit", "rect": None},
-]
 
 def init_grid():
-    """Creates an empty 80x120 grid."""
-    return np.zeros((GRID_HEIGHT, GRID_WIDTH), dtype=np.int8)
-
-@jit(nopython=True)
-def _count_neighbors(grid, r, c, height, width):
-    """
-    Counts alive neighbors for cell at (r, c).
-    Numba-compiled for speed.
-    """
-    count = 0
-    for i in range(-1, 2):
-        for j in range(-1, 2):
-            if i == 0 and j == 0:
-                continue
-            nr, nc = r + i, c + j
-            if 0 <= nr < height and 0 <= nc < width:
-                count += grid[nr, nc]
-    return count
-
-@jit(nopython=True)
-def _update_grid_numba(grid, height, width):
-    """Applies Conway's Game of Life Rules. Numba-compiled."""
-    new_grid = grid.copy()
-
-    for r in range(height):
-        for c in range(width):
-            neighbors = _count_neighbors(grid, r, c, height, width)
-            state = grid[r, c]
-
-            if state == 1:  # If Alive
-                if neighbors < 2 or neighbors > 3:
-                    new_grid[r, c] = 0
-            else:  # If Dead
-                if neighbors == 3:
-                    new_grid[r, c] = 1
-
-    return new_grid
-
-def update_grid(grid):
-    """Applies Conway's Game of Life Rules."""
-    return _update_grid_numba(grid, GRID_HEIGHT, GRID_WIDTH)
+    """Creates an empty 40x40 grid."""
+    return [[0 for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
 
 def get_neighbors(grid, r, c):
     """
     Counts alive neighbors for cell at (r, c).
     Checks the 8 surrounding cells (Moore Neighborhood).
     """
-    return _count_neighbors(grid, r, c, GRID_HEIGHT, GRID_WIDTH)
+    count = 0
+    # Loop through -1, 0, 1 relative positions
+    for i in range(-1, 2):
+        for j in range(-1, 2):
+            if i == 0 and j == 0:
+                continue # Skip self
+            
+            # Check boundaries
+            nr, nc = r + i, c + j
+            if 0 <= nr < GRID_SIZE and 0 <= nc < GRID_SIZE:
+                count += grid[nr][nc]
+    return count
 
-def draw_buttons(screen, font):
-    """Draws the control buttons at the bottom of the screen."""
-    # Calculate starting x position to center the buttons
-    total_button_width = len(buttons) * BUTTON_WIDTH + (len(buttons) - 1) * BUTTON_MARGIN
-    start_x = (WIDTH - total_button_width) // 2
+def update_grid(grid):
+    """Applies Conway's Game of Life Rules."""
+    new_grid = copy.deepcopy(grid)
     
-    # Position buttons below the grid
-    button_y = HEIGHT - BUTTON_PANEL_HEIGHT + (BUTTON_PANEL_HEIGHT - BUTTON_HEIGHT) // 2
-
-    for i, button in enumerate(buttons):
-        x = start_x + i * (BUTTON_WIDTH + BUTTON_MARGIN)
-        rect = pygame.Rect(x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT)
-        button["rect"] = rect # Store rect for click detection
-        
-        pygame.draw.rect(screen, BUTTON_COLOR, rect)
-        
-        # Render text
-        text_surface = font.render(button["text"], True, BUTTON_TEXT_COLOR)
-        text_rect = text_surface.get_rect(center=rect.center)
-        screen.blit(text_surface, text_rect)
+    for r in range(GRID_SIZE):
+        for c in range(GRID_SIZE):
+            neighbors = get_neighbors(grid, r, c)
+            state = grid[r][c]
+            
+            if state == 1: # If Alive
+                # Rule 1 & 3: Die if < 2 or > 3 neighbors
+                if neighbors < 2 or neighbors > 3:
+                    new_grid[r][c] = 0
+            else: # If Dead
+                # Rule 4: Reproduction if exactly 3 neighbors
+                if neighbors == 3:
+                    new_grid[r][c] = 1
+                    
+    return new_grid
 
 def get_cell_color(neighbors):
     """Returns color based on neighbor count."""
@@ -145,14 +95,10 @@ def main():
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Game of Life - Color Heatmap")
     clock = pygame.time.Clock()
-    pygame.font.init() # Initialize font module
-    font = pygame.font.Font(None, 24) # Default font, size 24
 
     grid = init_grid()
     running = True
     paused = True # Start paused so user can draw
-    generation = 0
-    active_cells = 0
 
     while running:
         # --- Event Handling ---
@@ -163,52 +109,39 @@ def main():
             # Mouse Controls
             if pygame.mouse.get_pressed()[0]: # Left Click
                 pos = pygame.mouse.get_pos()
-                # Check if click is on grid or button panel
-                if pos[1] < HEIGHT - BUTTON_PANEL_HEIGHT: # Click on grid
-                    # Calculate grid index from pixel position
-                    c = pos[0] // (CELL_SIZE + MARGIN)
-                    r = pos[1] // (CELL_SIZE + MARGIN)
-                    if 0 <= r < GRID_HEIGHT and 0 <= c < GRID_WIDTH:
-                        grid[r][c] = 1 # Set to Alive
-                else: # Click on button panel
-                    for button in buttons:
-                        if button["rect"] and button["rect"].collidepoint(pos):
-                            if button["action"] == "start":
-                                paused = False
-                            elif button["action"] == "stop":
-                                paused = True
-                            elif button["action"] == "step":
-                                if paused: # Only step if paused
-                                    grid = update_grid(grid)
-                            elif button["action"] == "quit":
-                                running = False
-
+                # Calculate grid index from pixel position
+                c = pos[0] // (CELL_SIZE + MARGIN)
+                r = pos[1] // (CELL_SIZE + MARGIN)
+                if 0 <= r < GRID_SIZE and 0 <= c < GRID_SIZE:
+                    grid[r][c] = 1 # Set to Alive
+            
             if pygame.mouse.get_pressed()[2]: # Right Click
                 pos = pygame.mouse.get_pos()
                 c = pos[0] // (CELL_SIZE + MARGIN)
                 r = pos[1] // (CELL_SIZE + MARGIN)
-                if 0 <= r < GRID_HEIGHT and 0 <= c < GRID_WIDTH:
+                if 0 <= r < GRID_SIZE and 0 <= c < GRID_SIZE:
                     grid[r][c] = 0 # Set to Dead
 
             # Keyboard Controls
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    paused = not paused
+                if event.key == pygame.K_c:
+                    grid = init_grid() # Clear
         
         # --- Logic ---
         if not paused:
             grid = update_grid(grid)
-            generation += 1
-
-        # Count active cells
-        active_cells = np.sum(grid)
 
         # --- Drawing ---
-        screen.fill(BACKGROUND_GREY)
+        screen.fill(BLACK)
 
-        for r in range(GRID_HEIGHT):
-            for c in range(GRID_WIDTH):
+        for r in range(GRID_SIZE):
+            for c in range(GRID_SIZE):
                 # Determine draw position
                 x = c * (CELL_SIZE + MARGIN) + MARGIN
                 y = r * (CELL_SIZE + MARGIN) + MARGIN
-
+                
                 # We draw dead cells as dark grey for grid effect, alive cells get color
                 if grid[r][c] == 1:
                     # Calculate neighbors just for coloring
@@ -216,14 +149,7 @@ def main():
                     color = get_cell_color(n_count)
                     pygame.draw.rect(screen, color, (x, y, CELL_SIZE, CELL_SIZE))
                 else:
-                    pygame.draw.rect(screen, GRID_DARK_BLUE, (x, y, CELL_SIZE, CELL_SIZE))
-
-        # Draw buttons
-        draw_buttons(screen, font)
-
-        # Draw generation and active cells counter
-        gen_text = font.render(f"Gen: {generation}  Cells: {int(active_cells)}", True, WHITE)
-        screen.blit(gen_text, (10, HEIGHT - BUTTON_PANEL_HEIGHT + 10))
+                    pygame.draw.rect(screen, GRID_COLOR, (x, y, CELL_SIZE, CELL_SIZE))
 
         # Draw specific UI indicators
         if paused:
