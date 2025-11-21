@@ -1,16 +1,23 @@
 <!DOCTYPE html>
+<!-- Conway's Game of Life - Web Implementation
+     A JavaScript/HTML5 Canvas implementation of Conway's Game of Life
+     Features: 120x80 grid, interactive cell toggling, 28 preset patterns,
+     real-time generation counter, and 60 FPS performance
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Game of Life</title>
     <style>
+        /* Reset default browser styles */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
+        /* Main page background and layout - centers all content */
         body {
             display: flex;
             justify-content: center;
@@ -20,6 +27,7 @@
             font-family: Arial, sans-serif;
         }
 
+        /* Vertical container for title, canvas, info, and controls */
         .container {
             display: flex;
             flex-direction: column;
@@ -27,11 +35,13 @@
             align-items: center;
         }
 
+        /* Game title styling */
         h1 {
             color: #fff;
             font-size: 32px;
         }
 
+        /* Canvas element - the game board (120x80 cells at 8px + 1px margin each) */
         #canvas {
             border: 2px solid #fff;
             background-color: #808080;
@@ -39,6 +49,7 @@
             display: block;
         }
 
+        /* Container for control buttons - wraps on smaller screens */
         .controls {
             display: flex;
             gap: 10px;
@@ -46,6 +57,7 @@
             flex-wrap: wrap;
         }
 
+        /* Styling for all buttons (Start/Stop, Step, Clear, Patterns, Quit) */
         button {
             padding: 10px 20px;
             font-size: 16px;
@@ -57,20 +69,24 @@
             transition: background-color 0.2s;
         }
 
+        /* Button hover effect */
         button:hover {
             background-color: #444;
         }
 
+        /* Button active/clicked effect */
         button:active {
             background-color: #222;
         }
 
+        /* Display for generation count and active cell count */
         .info {
             color: #fff;
             font-size: 16px;
             text-align: center;
         }
 
+        /* User instructions for mouse controls */
         .instructions {
             color: #aaa;
             font-size: 14px;
@@ -78,6 +94,7 @@
             max-width: 600px;
         }
 
+        /* Modal backdrop - semi-transparent overlay for pattern selection */
         .modal {
             display: none;
             position: fixed;
@@ -89,12 +106,14 @@
             background-color: rgba(0, 0, 0, 0.6);
         }
 
+        /* Modal visible state - shows as flex centered container */
         .modal.active {
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
+        /* Pattern selection dialog - centered modal content */
         .modal-content {
             background-color: #333;
             border: 2px solid #fff;
@@ -104,18 +123,21 @@
             max-width: 400px;
         }
 
+        /* Modal title */
         .modal-content h2 {
             color: #fff;
             margin-bottom: 20px;
             font-size: 24px;
         }
 
+        /* Container for list of pattern buttons */
         .pattern-list {
             display: flex;
             flex-direction: column;
             gap: 10px;
         }
 
+        /* Individual pattern selection button */
         .pattern-btn {
             padding: 12px 20px;
             font-size: 16px;
@@ -128,14 +150,17 @@
             text-align: left;
         }
 
+        /* Pattern button hover effect */
         .pattern-btn:hover {
             background-color: #444;
         }
 
+        /* Pattern button active effect */
         .pattern-btn:active {
             background-color: #222;
         }
 
+        /* Close/Cancel button styling for modal */
         .close-modal {
             display: block;
             margin-top: 20px;
@@ -144,46 +169,67 @@
     </style>
 </head>
 <body>
+    <!-- Main container for all page content -->
     <div class="container">
+        <!-- Game title -->
         <h1>Game of Life</h1>
+
+        <!-- Canvas element: 960x650px displays 120x80 grid (8px cells + 1px margins) -->
         <canvas id="canvas" width="960" height="650"></canvas>
+
+        <!-- Display generation counter and active cell count -->
         <div class="info">
             <p>Generation: <span id="generation">0</span> | Cells: <span id="cells">0</span></p>
         </div>
+
+        <!-- Dynamic button container - populated by JavaScript -->
         <div class="controls" id="controls">
-            <!-- Buttons will be added here dynamically -->
+            <!-- Buttons generated dynamically: Start/Stop, Step, Clear, Patterns, Quit -->
         </div>
+
+        <!-- User instructions for controls -->
         <div class="instructions">
             <p><strong>Left Click:</strong> Toggle cell | <strong>Right Click:</strong> Kill cell</p>
         </div>
     </div>
 
+    <!-- Pattern selection modal - hidden by default, shown when Patterns button clicked -->
     <div class="modal" id="patternModal">
         <div class="modal-content">
             <h2>Select Pattern</h2>
+            <!-- Pattern buttons dynamically generated from PATTERNS object -->
             <div class="pattern-list" id="patternList"></div>
             <button class="close-modal" onclick="closePatternModal()">Cancel</button>
         </div>
     </div>
 
     <script>
+        // ===== GAME CONSTANTS =====
+
+        // Grid dimensions: 120 cells wide x 80 cells tall
         const GRID_WIDTH = 120;
         const GRID_HEIGHT = 80;
-        const CELL_SIZE = 8;
-        const MARGIN = 1;
-        const FPS = 60;
 
-        // Colors
-        const BACKGROUND_GREY = '#808080';
-        const GRID_DARK_BLUE = '#00008B';
-        const COLOR_LONELY = '#00FFFF';
-        const COLOR_STABLE = '#00FF00';
-        const COLOR_CROWDED = '#FF4500';
-        const WHITE = '#FFFFFF';
+        // Rendering settings
+        const CELL_SIZE = 8;          // Each cell is 8 pixels
+        const MARGIN = 1;             // 1 pixel space between cells
+        const FPS = 60;               // Target frames per second
 
-        // Pattern definitions
+        // ===== COLOR PALETTE =====
+        // Used for visual feedback based on neighbor count
+        const BACKGROUND_GREY = '#808080';   // Background color
+        const GRID_DARK_BLUE = '#00008B';    // Dead cells
+        const COLOR_LONELY = '#00FFFF';      // Cells with 0-1 neighbors (cyan)
+        const COLOR_STABLE = '#00FF00';      // Cells with 2-3 neighbors (green)
+        const COLOR_CROWDED = '#FF4500';     // Cells with 4+ neighbors (orange)
+        const WHITE = '#FFFFFF';             // Border color when paused
+
+        // ===== PATTERN LIBRARY =====
+        // 28 preset patterns organized by category
+        // Format: 'O' = live cell, '.' = dead cell
         const PATTERNS = {
-            // Oscillators
+            // --- Oscillators (5) ---
+            // Patterns that repeat in cycles
             "blinker": `
 ..O..
 ..O..
@@ -222,7 +268,8 @@ O.....O
 ..OOO..
 `,
 
-            // Spaceships
+            // --- Spaceships (4) ---
+            // Patterns that move across the grid
             "glider": `
 .O.
 ..O
@@ -247,7 +294,8 @@ O...O..O
 .OOOOOO.
 `,
 
-            // Still lifes
+            // --- Still Lifes (8) ---
+            // Stable patterns that don't change
             "block": `
 OO
 OO
@@ -291,7 +339,8 @@ OOO.
 .O.O
 `,
 
-            // Guns & Puffers
+            // --- Guns & Puffers (1) ---
+            // Patterns that generate or emit gliders
             "gosper_glider_gun": `
 ........................O...........
 ......................O.O...........
@@ -304,7 +353,8 @@ OO........O...O.OO....O.O...........
 ............OO.......................
 `,
 
-            // Other patterns
+            // --- Chaotic/Evolving (5) ---
+            // Patterns that evolve in complex ways
             "beehive_with_tail": `
 .OO.
 O..O
@@ -335,27 +385,48 @@ OO.....
 `
         };
 
+        // ===== GLOBAL VARIABLES =====
+
+        // Canvas and rendering context
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
 
-        let grid = initGrid();
-        let running = false;
-        let paused = true;
-        let generation = 0;
-        let activeCells = 0;
-        let lastClickedCell = null;
+        // Game state
+        let grid = initGrid();           // 2D boolean array representing cell states
+        let running = false;             // Whether animation is running
+        let paused = true;               // Whether game is paused (not running)
+        let generation = 0;              // Current generation number
+        let activeCells = 0;             // Count of live cells
+        let lastClickedCell = null;      // Track last clicked cell for UI feedback
 
+        // ===== GAME INITIALIZATION AND GRID MANAGEMENT =====
+
+        /**
+         * Initialize an empty grid with all cells dead (false)
+         * @returns {Array<Array<boolean>>} 2D array of size GRID_HEIGHT x GRID_WIDTH
+         */
         function initGrid() {
             return Array(GRID_HEIGHT).fill(null).map(() => Array(GRID_WIDTH).fill(false));
         }
 
+        // ===== GAME LOGIC =====
+
+        /**
+         * Count live neighbors of a cell using Moore neighborhood (8 surrounding cells)
+         * @param {Array<Array<boolean>>} grid - The game grid
+         * @param {number} r - Row coordinate
+         * @param {number} c - Column coordinate
+         * @returns {number} Count of live neighbors (0-8)
+         */
         function countNeighbors(grid, r, c) {
             let count = 0;
+            // Check all 8 surrounding cells
             for (let i = -1; i <= 1; i++) {
                 for (let j = -1; j <= 1; j++) {
-                    if (i === 0 && j === 0) continue;
+                    if (i === 0 && j === 0) continue; // Skip the cell itself
                     const nr = r + i;
                     const nc = c + j;
+                    // Count if neighbor exists and is alive
                     if (nr >= 0 && nr < GRID_HEIGHT && nc >= 0 && nc < GRID_WIDTH) {
                         count += grid[nr][nc] ? 1 : 0;
                     }
@@ -364,7 +435,17 @@ OO.....
             return count;
         }
 
+        /**
+         * Apply Conway's Game of Life rules to create next generation
+         * Rules:
+         * - Live cell with <2 neighbors: dies (underpopulation)
+         * - Live cell with 2-3 neighbors: survives
+         * - Live cell with >3 neighbors: dies (overpopulation)
+         * - Dead cell with exactly 3 neighbors: becomes alive (reproduction)
+         * @returns {Array<Array<boolean>>} New grid state
+         */
         function updateGrid() {
+            // Create copy of grid to avoid modifying during iteration
             const newGrid = grid.map(row => [...row]);
 
             for (let r = 0; r < GRID_HEIGHT; r++) {
@@ -372,11 +453,13 @@ OO.....
                     const neighbors = countNeighbors(grid, r, c);
                     const state = grid[r][c];
 
-                    if (state) { // If alive
+                    if (state) {
+                        // Live cell: survives if 2-3 neighbors, dies otherwise
                         if (neighbors < 2 || neighbors > 3) {
                             newGrid[r][c] = false;
                         }
-                    } else { // If dead
+                    } else {
+                        // Dead cell: becomes alive if exactly 3 neighbors
                         if (neighbors === 3) {
                             newGrid[r][c] = true;
                         }
@@ -386,35 +469,52 @@ OO.....
             return newGrid;
         }
 
+        /**
+         * Get display color for a cell based on neighbor count
+         * Provides visual feedback about cell stability
+         * @param {number} neighbors - Number of live neighbors
+         * @returns {string} Color hex code
+         */
         function getCellColor(neighbors) {
-            if (neighbors < 2) return COLOR_LONELY;
-            if (neighbors <= 3) return COLOR_STABLE;
-            return COLOR_CROWDED;
+            if (neighbors < 2) return COLOR_LONELY;    // Cyan: lonely (may die)
+            if (neighbors <= 3) return COLOR_STABLE;   // Green: stable (might survive)
+            return COLOR_CROWDED;                      // Orange: crowded (may die)
         }
 
+        // ===== RENDERING =====
+
+        /**
+         * Render the current game state to canvas
+         * - Draws all cells with appropriate colors based on neighbor count
+         * - Draws white border when paused to indicate edit mode
+         * - Updates generation and cell count displays
+         */
         function draw() {
-            // Fill background
+            // Clear canvas with background color
             ctx.fillStyle = BACKGROUND_GREY;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw grid
+            // Draw each cell in the grid
             for (let r = 0; r < GRID_HEIGHT; r++) {
                 for (let c = 0; c < GRID_WIDTH; c++) {
+                    // Calculate pixel position: each cell is 8px with 1px margin
                     const x = c * (CELL_SIZE + MARGIN) + MARGIN;
                     const y = r * (CELL_SIZE + MARGIN) + MARGIN;
 
                     if (grid[r][c]) {
+                        // Live cell: color based on neighbor count
                         const neighbors = countNeighbors(grid, r, c);
                         ctx.fillStyle = getCellColor(neighbors);
                         ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
                     } else {
+                        // Dead cell: dark blue
                         ctx.fillStyle = GRID_DARK_BLUE;
                         ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
                     }
                 }
             }
 
-            // Draw border if paused
+            // Draw white border when paused to show edit mode is active
             if (paused) {
                 ctx.strokeStyle = WHITE;
                 ctx.lineWidth = 2;
@@ -422,25 +522,42 @@ OO.....
                 ctx.strokeRect(0, 0, canvas.width, gridHeight);
             }
 
-            // Update info
+            // Update UI displays
             activeCells = grid.reduce((sum, row) => sum + row.filter(cell => cell).length, 0);
             document.getElementById('generation').textContent = generation;
             document.getElementById('cells').textContent = activeCells;
         }
 
+        /**
+         * Main game loop using requestAnimationFrame for smooth 60 FPS
+         * - Updates grid if not paused
+         * - Always renders current state
+         * - Schedules next frame
+         */
         function gameLoop() {
+            // Advance generation if running
             if (!paused) {
                 grid = updateGrid();
                 generation++;
             }
+            // Always draw current state
             draw();
+            // Schedule next frame
             requestAnimationFrame(gameLoop);
         }
 
+        // ===== USER INTERFACE =====
+
+        /**
+         * Generate and render control buttons based on current game state
+         * When paused: Shows Start (to run), Step (to advance one generation), Clear, Patterns, Quit
+         * When running: Shows Stop (to pause), Step, Clear, Patterns, Quit
+         */
         function updateButtons() {
             const controlsDiv = document.getElementById('controls');
-            controlsDiv.innerHTML = '';
+            controlsDiv.innerHTML = ''; // Clear existing buttons
 
+            // Define buttons with state-dependent text
             const buttons = [
                 { text: paused ? 'Start' : 'Stop', action: paused ? 'start' : 'stop' },
                 { text: 'Step', action: 'step' },
@@ -449,6 +566,7 @@ OO.....
                 { text: 'Quit', action: 'quit' }
             ];
 
+            // Create and add button elements
             buttons.forEach(btn => {
                 const button = document.createElement('button');
                 button.textContent = btn.text;
@@ -457,17 +575,24 @@ OO.....
             });
         }
 
+        /**
+         * Handle button clicks with appropriate game state changes
+         * @param {string} action - The button action: 'start', 'stop', 'step', 'clear', 'patterns', 'quit'
+         */
         function handleButtonClick(action) {
             switch (action) {
                 case 'start':
+                    // Start running the simulation
                     paused = false;
-                    updateButtons();
+                    updateButtons(); // Change Start button to Stop
                     break;
                 case 'stop':
+                    // Pause the simulation
                     paused = true;
-                    updateButtons();
+                    updateButtons(); // Change Stop button to Start
                     break;
                 case 'step':
+                    // Advance one generation (only if paused)
                     if (paused) {
                         grid = updateGrid();
                         generation++;
@@ -475,14 +600,17 @@ OO.....
                     }
                     break;
                 case 'clear':
+                    // Reset grid and generation counter
                     grid = initGrid();
                     generation = 0;
                     draw();
                     break;
                 case 'patterns':
+                    // Open pattern selection modal
                     openPatternModal();
                     break;
                 case 'quit':
+                    // Close the browser window (if allowed)
                     if (confirm('Close this window?')) {
                         window.close();
                     }
@@ -490,23 +618,38 @@ OO.....
             }
         }
 
+        // ===== PATTERN LOADING =====
+
+        /**
+         * Load a preset pattern onto the grid
+         * - Clears the current grid
+         * - Centers the pattern on the grid
+         * - Resets generation counter and pauses simulation
+         * @param {string} patternName - Key from PATTERNS object (e.g., 'glider', 'blinker')
+         */
         function loadPattern(patternName) {
             const patternString = PATTERNS[patternName];
-            if (!patternString) return;
+            if (!patternString) return; // Pattern not found, exit early
 
+            // Start fresh with empty grid
             grid = initGrid();
+
+            // Parse pattern string into lines
             const patternLines = patternString.trim().split('\n');
             const patternHeight = patternLines.length;
             const patternWidth = Math.max(...patternLines.map(line => line.trim().length));
 
+            // Calculate offset to center pattern on grid
             const offsetR = Math.floor((GRID_HEIGHT - patternHeight) / 2);
             const offsetC = Math.floor((GRID_WIDTH - patternWidth) / 2);
 
+            // Parse each character: 'O' = live cell, '.' = dead cell
             patternLines.forEach((line, r) => {
                 line.trim().split('').forEach((char, c) => {
                     if (char === 'O') {
                         const row = r + offsetR;
                         const col = c + offsetC;
+                        // Bounds check before placing cell
                         if (row >= 0 && row < GRID_HEIGHT && col >= 0 && col < GRID_WIDTH) {
                             grid[row][col] = true;
                         }
@@ -514,80 +657,114 @@ OO.....
                 });
             });
 
+            // Reset game state after loading pattern
             generation = 0;
-            paused = true;
+            paused = true; // Always pause when loading pattern for inspection
             closePatternModal();
-            updateButtons();
+            updateButtons(); // Update to show Start button (since paused)
             draw();
         }
 
+        /**
+         * Open the pattern selection modal
+         * - Populates modal with all available patterns (alphabetically sorted)
+         * - Makes modal visible
+         */
         function openPatternModal() {
             const modal = document.getElementById('patternModal');
             const patternList = document.getElementById('patternList');
-            patternList.innerHTML = '';
+            patternList.innerHTML = ''; // Clear previous buttons
 
+            // Create button for each pattern, sorted alphabetically
             Object.keys(PATTERNS).sort().forEach(patternName => {
                 const btn = document.createElement('button');
                 btn.className = 'pattern-btn';
+                // Capitalize first letter for display
                 btn.textContent = patternName.charAt(0).toUpperCase() + patternName.slice(1);
                 btn.onclick = () => loadPattern(patternName);
                 patternList.appendChild(btn);
             });
 
+            // Show modal
             modal.classList.add('active');
         }
 
+        /**
+         * Close the pattern selection modal
+         */
         function closePatternModal() {
             const modal = document.getElementById('patternModal');
             modal.classList.remove('active');
         }
 
-        // Close modal when clicking outside of it
+        // Close modal when clicking outside the modal content (on the dark overlay)
         document.getElementById('patternModal').addEventListener('click', (e) => {
             if (e.target.id === 'patternModal') {
                 closePatternModal();
             }
         });
 
+        // ===== MOUSE INPUT =====
+
+        /**
+         * Convert mouse event coordinates to grid cell coordinates
+         * Accounts for canvas scaling and DPI to ensure accurate click detection
+         * @param {MouseEvent} e - The mouse event
+         * @returns {Object|null} Object with {r, c} grid coordinates, or null if out of bounds
+         */
         function getCellFromMouse(e) {
             const rect = canvas.getBoundingClientRect();
+            // Calculate scale factors for DPI-aware positioning
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
 
+            // Convert mouse position to canvas coordinates
             const x = (e.clientX - rect.left) * scaleX;
             const y = (e.clientY - rect.top) * scaleY;
 
-            // Subtract the initial margin, then divide by cell+margin size
+            // Adjust for initial margin and calculate grid position
+            // Each cell occupies (CELL_SIZE + MARGIN) pixels
             const adjustedX = x - MARGIN;
             const adjustedY = y - MARGIN;
 
             const c = Math.floor(adjustedX / (CELL_SIZE + MARGIN));
             const r = Math.floor(adjustedY / (CELL_SIZE + MARGIN));
 
+            // Return grid coordinates if within bounds
             if (r >= 0 && r < GRID_HEIGHT && c >= 0 && c < GRID_WIDTH) {
                 return { r, c };
             }
             return null;
         }
 
+        /**
+         * Left click: Toggle cell state (dead <-> alive)
+         * Only active in paused mode
+         */
         canvas.addEventListener('click', (e) => {
             const cell = getCellFromMouse(e);
             if (cell) {
-                grid[cell.r][cell.c] = !grid[cell.r][cell.c];
+                grid[cell.r][cell.c] = !grid[cell.r][cell.c]; // Toggle
                 draw();
             }
         });
 
+        /**
+         * Right click: Kill cell (set to dead)
+         * Only active in paused mode
+         * Prevents context menu from appearing
+         */
         canvas.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
+            e.preventDefault(); // Suppress right-click context menu
             const cell = getCellFromMouse(e);
             if (cell) {
-                grid[cell.r][cell.c] = false;
+                grid[cell.r][cell.c] = false; // Kill cell
                 draw();
             }
         });
 
-        // Initialize
+        // ===== INITIALIZATION =====
+        // Start the game: render buttons, draw initial state, and begin game loop
         updateButtons();
         draw();
         gameLoop();
